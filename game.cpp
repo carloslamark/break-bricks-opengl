@@ -1,19 +1,21 @@
 #include <GL/glut.h>
 
-// Manual:
-//     Mover ombro-> teclas 'w' e 's'
-//     Mover braço-> teclas 'q' e 'e'
-//     Mover antebraço-> teclas 'a' e 'd'
-//     Mover dedos-> teclas 'z' e 'c'
-
 float width = 0.0f;
 float armRotation = 0.0f;
 float foreArmRotation = 0.0f;
 float handRotation = 0.0f;
 
+float ballX = 5.5f;
+float ballY = 0.75f;
+float ballRadius = 0.25f;
+float ballSpeedX = 0.001f;
+float ballSpeedY = 0.001f;
+
 void display();
 void line(float, float, float, float, float);
 void bar();
+void ball();
+void updateBall();
 
 void ombro();
 void primeiroBraco();
@@ -33,6 +35,7 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
+    glutIdleFunc(updateBall); // Função chamada quando a janela está ociosa
     glutMainLoop();
     return 0;
 }
@@ -44,170 +47,76 @@ void display()
     glLoadIdentity();
 
     glOrtho(0.0, 10.0, 0.0, 10.0, -10.0, 10.0);
-    // 10.0 -> 100%
-    // 0.0 -> 0%
     line(5.0, 0.0, 0.0, 0.0, 10.0);
     line(5.0, 0.0, 10.0, 10.0, 10.0);
     line(5.0, 10.0, 10.0, 10.0, 0.0);
     line(5.0, 10.0, 0.0, 0.0, 0.0);
 
     bar();
+    ball();
 
     glFlush();
 }
 
 void line(float width, float initialX, float initialY, float finalX, float finalY)
 {
-    // Define a largura da linha para 3 pixels
     glLineWidth(width);
-
     glBegin(GL_LINES);
-    // Define os pontos inicial e final da linha
-    glVertex2f(initialX, initialY);  // Ponto inicial
-    glVertex2f(finalX, finalY);  // Ponto final
+    glVertex2f(initialX, initialY);
+    glVertex2f(finalX, finalY);
     glEnd();
-
 }
 
 void bar()
 {
     glPushMatrix();
-
     glBegin(GL_QUADS);
     glColor3f(0.541176,  0.603922, 0.74902);
-    glVertex2f(width + 4,0.50);
-    glVertex2f(width + 6,0.50);
-    glVertex2f(width + 6,0.25);
-    glVertex2f(width + 4,0.25);
+    glVertex2f(width + 4, 0.50);
+    glVertex2f(width + 6, 0.50);
+    glVertex2f(width + 6, 0.25);
+    glVertex2f(width + 4, 0.25);
     glEnd();
     glPopMatrix();
 }
 
+void ball()
+{
+    glPushMatrix();
+    glTranslatef(ballX, ballY, 0.0f);
+    glColor3f(0.541176,  0.603922, 0.74902);
+    glutSolidSphere(ballRadius, 20, 20);
+    glPopMatrix();
+}
 
-// void ombro()
-// {
-//     glPushMatrix();
-//     glTranslatef(0.5, height + 5, 1.0);
-//     glColor3f(0.1804, 0.2, 0.251);
-//     glutSolidSphere(0.5, 20, 20);
-//     glPopMatrix();
-// }
+void updateBall()
+{
+    // Atualiza a posição da bola
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
 
-// void primeiroBraco()
-// {
-//     glPushMatrix();
-//     glTranslatef(0.0, height, 0.0);
+    // Verifica colisão com o retângulo
+    if (ballX + ballRadius >= width + 4.0f && ballX - ballRadius <= width + 6.0f &&
+        ballY + ballRadius >= 0.25f && ballY - ballRadius <= 0.50f)
+    {
+        // Inverte a direção vertical da bola ao colidir com o retângulo
+        ballSpeedY = -ballSpeedY;
+    }
 
-//     glTranslatef(0.5, +5.0, 0.0);
-//     glRotatef(armRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(0.0, -5.0, 0.0);
+    // Verifica colisão com as bordas da janela
+    if (ballX + ballRadius >= 10.0f || ballX - ballRadius <= 0.0f)
+    {
+        // Inverte a direção horizontal da bola ao colidir com as bordas laterais
+        ballSpeedX = -ballSpeedX;
+    }
+    if (ballY + ballRadius >= 10.0f || ballY - ballRadius <= 0.0f)
+    {
+        // Inverte a direção vertical da bola ao colidir com as bordas superior e inferior
+        ballSpeedY = -ballSpeedY;
+    }
 
-//     glTranslatef(0.0, -height, 0.0);
-
-//     glBegin(GL_QUADS);
-//     glColor3f(0.541176,  0.603922, 0.74902);
-//     glVertex2f(0.5, height + 5.25);
-//     glVertex2f(3.5, height + 5.25);
-//     glVertex2f(3.5, height + 4.75);
-//     glVertex2f(0.5, height + 4.75);
-//     glEnd();
-//     glPopMatrix();
-// }
-
-// void cotovelo()
-// {
-//     glPushMatrix();
-//     glTranslatef(0.0, height + 5, 0.0);
-
-//     glTranslatef(0.5, 0.0, 0.0);
-//     glRotatef(armRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(4.0, 0.0, 0.0);
-
-
-//     glColor3f(0.1804, 0.2, 0.251);
-//     glutSolidSphere(0.5, 20, 20);
-//     glPopMatrix();
-// }
-
-// void antebraco()
-// {
-//     glPushMatrix();
-//     glTranslatef(0.0, +height, 0.0);
-
-//     glTranslatef(0.5, +5.0, 0.0);
-//     glRotatef(armRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(1.0, -5.0, 0.0);
-
-//     glTranslatef(3.0, +5.0, 0.0);
-//     glRotatef(foreArmRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(-3.0, -5.0, 0.0);
-
-//     glBegin(GL_QUADS);
-//     glColor3f(0.541176,  0.603922, 0.74902);
-//     glVertex2f(3.5, 5.25);
-//     glVertex2f(6.5, 5.25);
-//     glVertex2f(6.5, 4.75);
-//     glVertex2f(3.5, 4.75);
-//     glEnd();
-//     glPopMatrix();
-// }
-
-// void pulso()
-// {
-//     glPushMatrix();
-//     glTranslatef(0.0, height + 5.0, 0.0);
-
-//     glTranslatef(0.5, 0.0, 0.0);
-//     glRotatef(armRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(8.0, 0.0, 0.0);
-
-//     glTranslatef(-4.0, 0.0, 0.0);
-//     glRotatef(foreArmRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(+4.0, 0.0, 0.0);
-
-//     glColor3f(0.1804, 0.2, 0.251);
-//     glutSolidSphere(0.5, 20, 20);
-//     glPopMatrix();
-// }
-
-// void mao()
-// {
-//     dedo(45);
-//     dedo(0);
-//     dedo(315);
-// }
-
-// void dedo(int ang)
-// {
-//     glPushMatrix();
-
-//     glTranslatef(0.0, +height, 0.0);
-
-//     glTranslatef(0.5, +5.0, 0.0);
-//     glRotatef(armRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(1.0, -5.0, 0.0);
-
-//     glTranslatef(3.0, +5.0, 0.0);
-//     glRotatef(foreArmRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(-3.0, -5.0, 0.0);
-
-//     glTranslatef(7.0, +5.0, 0.0);
-//     glRotatef(ang, 0.0, 0.0, 1.0);
-//     glTranslatef(-7.0, -5.0, 0.0);
-
-//     glTranslatef(7.0, +5.0, 0.0);
-//     glRotatef(handRotation, 0.0, 0.0, 1.0);
-//     glTranslatef(-7.0, -5.0, 0.0);
-
-//     glBegin(GL_QUADS);
-//     glColor3f(0.541176,  0.603922, 0.74902);
-//     glVertex2f(7.5, 5.125);
-//     glVertex2f(8.0, 5.125);
-//     glVertex2f(8.0, 4.875);
-//     glVertex2f(7.5, 4.875);
-//     glEnd();
-//     glPopMatrix();
-// }
+    glutPostRedisplay(); // Solicita a atualização da tela
+}
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -223,5 +132,3 @@ void keyboard(unsigned char key, int x, int y)
 
     glutPostRedisplay(); // Solicita a atualização da tela
 }
-
-
