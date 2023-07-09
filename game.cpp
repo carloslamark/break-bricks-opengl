@@ -1,10 +1,19 @@
 #include <GL/glut.h>
 
-float width = 0.0f;
-float armRotation = 0.0f;
-float foreArmRotation = 0.0f;
-float handRotation = 0.0f;
+#define MATRIX_ROWS 5
+#define MATRIX_COLS 6
+#define RECT_WIDTH 1.45f
+#define RECT_HEIGHT 0.75f
 
+struct Retangle{
+    float x;
+    float y;
+    bool active;
+} matrix[MATRIX_ROWS][MATRIX_COLS];
+
+
+
+float width = 0.0f;
 float ballX = 5.5f;
 float ballY = 0.75f;
 float ballRadius = 0.25f;
@@ -16,14 +25,8 @@ void line(float, float, float, float, float);
 void bar();
 void ball();
 void updateBall();
-
-void ombro();
-void primeiroBraco();
-void cotovelo();
-void antebraco();
-void pulso();
-void mao();
-void dedo(int ang);
+void drawMatrix();
+void removeRectangle(int row, int col);
 void keyboard(unsigned char key, int x, int y);
 
 int main(int argc, char** argv)
@@ -36,6 +39,18 @@ int main(int argc, char** argv)
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
     glutIdleFunc(updateBall); // Função chamada quando a janela está ociosa
+
+    // Inicializa a matriz de retângulos
+    for (int i = 0; i < MATRIX_ROWS; i++)
+    {
+        for (int j = 0; j < MATRIX_COLS; j++)
+        {
+            matrix[i][j].x = j * (RECT_WIDTH + 0.2f) + 0.2f;
+            matrix[i][j].y = 10.0f - (i + 1) * (RECT_HEIGHT + 0.2f) - 0.2f;
+            matrix[i][j].active = true;
+        }
+    }
+
     glutMainLoop();
     return 0;
 }
@@ -54,6 +69,7 @@ void display()
 
     bar();
     ball();
+    drawMatrix();
 
     glFlush();
 }
@@ -95,12 +111,47 @@ void updateBall()
     ballX += ballSpeedX;
     ballY += ballSpeedY;
 
-    // Verifica colisão com o retângulo
+    // Verifica colisão com o retângulo da barra
     if (ballX + ballRadius >= width + 4.0f && ballX - ballRadius <= width + 6.0f &&
         ballY + ballRadius >= 0.25f && ballY - ballRadius <= 0.50f)
     {
-        // Inverte a direção vertical da bola ao colidir com o retângulo
+        // Inverte a direção vertical da bola ao colidir com o retângulo da barra
         ballSpeedY = -ballSpeedY;
+    }
+
+    // Verifica colisão com os retângulos da matriz
+    int col = static_cast<int>((ballX - (width + 4.0f)) / RECT_WIDTH);
+    int row = MATRIX_ROWS - 1;
+    if (row >= 0 && row < MATRIX_ROWS && col >= 0 && col < MATRIX_COLS && matrix[row][col].active)
+    {
+        // Inverte a direção vertical da bola ao colidir com um retângulo da matriz
+        ballSpeedY = -ballSpeedY;
+
+        // Remove o retângulo da matriz
+        removeRectangle(row, col);
+    }
+    else
+    {
+        // Verifica colisão com os retângulos superiores da matriz
+        for (int i = 0; i < MATRIX_ROWS; i++)
+        {
+            for (int j = 0; j < MATRIX_COLS; j++)
+            {
+                if (matrix[i][j].active)
+                {
+                    if (ballX + ballRadius >= matrix[i][j].x && ballX - ballRadius <= matrix[i][j].x + RECT_WIDTH &&
+                        ballY + ballRadius >= matrix[i][j].y && ballY - ballRadius <= matrix[i][j].y + RECT_HEIGHT)
+                    {
+                        // Inverte a direção vertical da bola ao colidir com um retângulo da matriz
+                        ballSpeedY = -ballSpeedY;
+
+                        // Remove o retângulo da matriz
+                        removeRectangle(i, j);
+                        return; // Encerra a função após a colisão para evitar colisões múltiplas
+                    }
+                }
+            }
+        }
     }
 
     // Verifica colisão com as bordas da janela
@@ -116,6 +167,37 @@ void updateBall()
     }
 
     glutPostRedisplay(); // Solicita a atualização da tela
+}
+
+void drawMatrix()
+{
+    for (int i = 0; i < MATRIX_ROWS; i++)
+    {
+        for (int j = 0; j < MATRIX_COLS; j++)
+        {
+            if (matrix[i][j].active)
+            {
+                glPushMatrix();
+                glTranslatef(matrix[i][j].x, matrix[i][j].y, 0.0f);
+                glColor3f(0.541176, 0.603922, 0.74902);
+                glBegin(GL_QUADS);
+                glVertex2f(0.0f, 0.0f);
+                glVertex2f(RECT_WIDTH, 0.0f);
+                glVertex2f(RECT_WIDTH, RECT_HEIGHT);
+                glVertex2f(0.0f, RECT_HEIGHT);
+                glEnd();
+                glPopMatrix();
+            }
+        }
+    }
+}
+
+void removeRectangle(int row, int col)
+{
+    if (row >= 0 && row < MATRIX_ROWS && col >= 0 && col < MATRIX_COLS)
+    {
+        matrix[row][col].active = false;
+    }
 }
 
 void keyboard(unsigned char key, int x, int y)
