@@ -1,4 +1,6 @@
 #include <GL/glut.h>
+#include <cstring>
+
 
 #define MATRIX_ROWS 5
 #define MATRIX_COLS 6
@@ -16,9 +18,13 @@ struct Retangle{
 float width = 0.0f;
 float ballX = 5.5f;
 float ballY = 0.75f;
-float ballRadius = 0.25f;
+float ballRadius = 0.1f;
 float ballSpeedX = 0.001f;
 float ballSpeedY = 0.001f;
+float ballSpeedXAux = 0.001f;
+float ballSpeedYAux = 0.001f;
+int gameOver = 0;
+int menu = 1;
 
 void display();
 void line(float, float, float, float, float);
@@ -27,6 +33,10 @@ void ball();
 void updateBall();
 void drawMatrix();
 void removeRectangle(int row, int col);
+int checkMatrix(int, int);
+int checkChangeSide(int, int);
+void gameOverScreen();
+void menuScreen();
 void keyboard(unsigned char key, int x, int y);
 
 int main(int argc, char** argv)
@@ -36,9 +46,8 @@ int main(int argc, char** argv)
     glutInitWindowSize(400, 600);
     glutCreateWindow("Destruidor de Blocos");
     glEnable(GL_DEPTH_TEST);
-    glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
-    glutIdleFunc(updateBall); // Função chamada quando a janela está ociosa
+    // Função chamada quando a janela está ociosa
 
     // Inicializa a matriz de retângulos
     for (int i = 0; i < MATRIX_ROWS; i++)
@@ -50,6 +59,8 @@ int main(int argc, char** argv)
             matrix[i][j].active = true;
         }
     }
+    glutIdleFunc(updateBall);
+    glutDisplayFunc(display);
 
     glutMainLoop();
     return 0;
@@ -71,8 +82,27 @@ void display()
     ball();
     drawMatrix();
 
+    if (gameOver) {
+        glDisable(GL_DEPTH_TEST);
+        gameOverScreen();
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    if(menu > 0) {
+        glDisable(GL_DEPTH_TEST);
+        menuScreen();
+        ballSpeedX = ballSpeedXAux;
+        ballSpeedY = ballSpeedYAux;
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    ballSpeedXAux = ballSpeedX;
+    ballSpeedYAux = ballSpeedY;
+
     glFlush();
+    glutSwapBuffers();
 }
+
 
 void line(float width, float initialX, float initialY, float finalX, float finalY)
 {
@@ -107,6 +137,9 @@ void ball()
 
 void updateBall()
 {
+    if (menu > 0) {
+        return;
+    }
     // Atualiza a posição da bola
     ballX += ballSpeedX;
     ballY += ballSpeedY;
@@ -115,58 +148,72 @@ void updateBall()
     if (ballX + ballRadius >= width + 4.0f && ballX - ballRadius <= width + 6.0f &&
         ballY + ballRadius >= 0.25f && ballY - ballRadius <= 0.50f)
     {
-        // Inverte a direção vertical da bola ao colidir com o retângulo da barra
-        ballSpeedY = -ballSpeedY;
-    }
-
-    // Verifica colisão com os retângulos da matriz
-    int col = static_cast<int>((ballX - (width + 4.0f)) / RECT_WIDTH);
-    int row = MATRIX_ROWS - 1;
-    if (row >= 0 && row < MATRIX_ROWS && col >= 0 && col < MATRIX_COLS && matrix[row][col].active)
-    {
-        // Inverte a direção vertical da bola ao colidir com um retângulo da matriz
         ballSpeedY = -ballSpeedY;
 
-        // Remove o retângulo da matriz
-        removeRectangle(row, col);
-    }
-    else
-    {
-        // Verifica colisão com os retângulos superiores da matriz
-        for (int i = 0; i < MATRIX_ROWS; i++)
+        while (ballX + ballRadius >= width + 4.0f && ballX - ballRadius <= width + 6.0f &&
+            ballY + ballRadius >= 0.25f && ballY - ballRadius <= 0.50f)
         {
-            for (int j = 0; j < MATRIX_COLS; j++)
-            {
-                if (matrix[i][j].active)
-                {
-                    if (ballX + ballRadius >= matrix[i][j].x && ballX - ballRadius <= matrix[i][j].x + RECT_WIDTH &&
-                        ballY + ballRadius >= matrix[i][j].y && ballY - ballRadius <= matrix[i][j].y + RECT_HEIGHT)
-                    {
-                        // Inverte a direção vertical da bola ao colidir com um retângulo da matriz
-                        ballSpeedY = -ballSpeedY;
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+        }
+        // Inverte a direção vertical da bola ao colidir com o retângulo da barra
+    }
 
-                        // Remove o retângulo da matriz
-                        removeRectangle(i, j);
-                        return; // Encerra a função após a colisão para evitar colisões múltiplas
+    if (ballY >= 5) {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 6; j++) {
+                if (checkMatrix(i, j)) {
+                    removeRectangle(i, j);
+
+                    // Verifica a colisão com a lateral esquerda do retângulo
+                    if (ballX + ballRadius >= matrix[i][j].x && ballX - ballRadius <= matrix[i][j].x) {
+                        ballSpeedX = -ballSpeedX;  // Inverte a direção horizontal da bola
                     }
+                    // Verifica a colisão com a lateral direita do retângulo
+                    else if (ballX - ballRadius <= matrix[i][j].x + RECT_WIDTH && ballX + ballRadius >= matrix[i][j].x + RECT_WIDTH) {
+                        ballSpeedX = -ballSpeedX;  // Inverte a direção horizontal da bola
+                    }
+                    if (ballY + ballRadius >= matrix[i][j].y && ballY - ballRadius <= matrix[i][j].y) {
+                        ballSpeedY = -ballSpeedY;  // Inverte a direção horizontal da bola
+                    }
+                    // Verifica a colisão com a lateral direita do retângulo
+                    else if (ballY - ballRadius <= matrix[i][j].y + RECT_WIDTH && ballY + ballRadius >= matrix[i][j].y + RECT_WIDTH) {
+                        ballSpeedY = -ballSpeedY;  // Inverte a direção horizontal da bola
+                    }
+
                 }
             }
         }
     }
 
     // Verifica colisão com as bordas da janela
-    if (ballX + ballRadius >= 10.0f || ballX - ballRadius <= 0.0f)
-    {
+    if (ballX + ballRadius >= 10.0f || ballX - ballRadius <= 0.0f) {
         // Inverte a direção horizontal da bola ao colidir com as bordas laterais
         ballSpeedX = -ballSpeedX;
     }
-    if (ballY + ballRadius >= 10.0f || ballY - ballRadius <= 0.0f)
-    {
+    if (ballY + ballRadius >= 10.0f) {
         // Inverte a direção vertical da bola ao colidir com as bordas superior e inferior
         ballSpeedY = -ballSpeedY;
     }
 
+    if (ballY - ballRadius <= 0.0f) {
+        ballSpeedX = 0.0;
+        ballSpeedY = 0.0;
+        gameOver = 1;
+    }
+
     glutPostRedisplay(); // Solicita a atualização da tela
+}
+
+int checkMatrix(int i, int j) {
+    if (
+        matrix[i][j].active &&
+        ballX >= matrix[i][j].x && ballX <= matrix[i][j].x + RECT_WIDTH &&
+        ballY >= matrix[i][j].y && ballY <= matrix[i][j].y + RECT_HEIGHT
+    ) {
+        return 1;
+    }
+    return 0;
 }
 
 void drawMatrix()
@@ -194,22 +241,103 @@ void drawMatrix()
 
 void removeRectangle(int row, int col)
 {
-    if (row >= 0 && row < MATRIX_ROWS && col >= 0 && col < MATRIX_COLS)
-    {
-        matrix[row][col].active = false;
-    }
+    matrix[row][col].active = false;
 }
+
+void gameOverScreen()
+{
+    glBegin(GL_QUADS);
+    glColor3f(1.0, 1.0, 0.0);
+    glVertex2f(2, 7);
+    glVertex2f(8, 7);
+    glVertex2f(8, 3);
+    glVertex2f(2, 3);
+    glEnd();
+
+    glPushMatrix();
+    glTranslatef(4.5f, 4.5f, 0.0f);
+    glColor3f(0.0, 0.0, 0.0);
+    glRasterPos2f(-1.0f, 0.0f);
+    const char* text = "Game Over";
+    for (int i = 0; i < strlen(text); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+    }
+    glPopMatrix();
+}
+
+void menuScreen()
+{
+    glBegin(GL_QUADS);
+    glColor3f(1.0, 1.0, 1.0);
+    glVertex2f(2, 8);
+    glVertex2f(8, 8);
+    glVertex2f(8, 2);
+    glVertex2f(2, 2);
+    glEnd();
+
+    glPushMatrix();
+    glTranslatef(3.5f, 6.5f, 0.0f);
+    glColor3f(0.0, 0.0, 0.0);
+    glRasterPos2f(-1.0f, 0.0f);
+    const char* text = "Menu";
+    for (int i = 0; i < strlen(text); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+    }
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5f, 5.5f, 0.0f);
+    glColor3f(0.0, 0.0, 0.0);
+    glRasterPos2f(-1.0f, 0.0f);
+    const char* text2 = "- 'm' para menu";
+    for (int i = 0; i < strlen(text2); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text2[i]);
+    }
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5f, 4.5f, 0.0f);
+    glColor3f(0.0, 0.0, 0.0);
+    glRasterPos2f(-1.0f, 0.0f);
+    const char* text3 = "- 'n' novo jogo";
+    for (int i = 0; i < strlen(text3); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text3[i]);
+    }
+    glPopMatrix();
+}
+
 
 void keyboard(unsigned char key, int x, int y)
 {
     switch (key)
     {
-    case 'd':
-        width += 0.2f; // Incrementa a largura
-        break;
-    case 'a':
-        width -= 0.2f; // Decrementa a largura
-        break;
+        case 'd':
+            width += 0.6f; // Incrementa a largura
+            break;
+        case 'a':
+            width -= 0.6f; // Decrementa a largura
+            break;
+        case 'm':
+            ballSpeedX = ballSpeedXAux;
+            ballSpeedY = ballSpeedYAux;
+            menu *= -1;
+            break;
+        case 'n':
+            if (menu > 0) {
+                for (int i = 0; i < MATRIX_ROWS; i++) {
+                    for (int j = 0; j < MATRIX_COLS; j++) {
+                        matrix[i][j].active = true;
+                    }
+                }
+                gameOver = 0;
+                ballSpeedX = 0.001f;
+                ballSpeedY = 0.001f;
+                ballSpeedXAux = 0.001f;
+                ballSpeedYAux = 0.001f;
+                ballX = 5.5f;
+                ballY = 0.75f;
+            }
+            break;
     }
 
     glutPostRedisplay(); // Solicita a atualização da tela
