@@ -13,16 +13,16 @@ struct Retangle{
     bool active;
 } matrix[MATRIX_ROWS][MATRIX_COLS];
 
-
+int victory = 0;
 
 float width = 0.0f;
 float ballX = 5.5f;
 float ballY = 0.75f;
 float ballRadius = 0.1f;
-float ballSpeedX = 0.001f;
-float ballSpeedY = 0.001f;
-float ballSpeedXAux = 0.001f;
-float ballSpeedYAux = 0.001f;
+float ballSpeedX = 0.002f;
+float ballSpeedY = 0.002f;
+float ballSpeedXAux = 0.002f;
+float ballSpeedYAux = 0.002f;
 int gameOver = 0;
 int menu = 1;
 
@@ -38,7 +38,7 @@ int checkChangeSide(int, int);
 void gameOverScreen();
 void menuScreen();
 void keyboard(unsigned char key, int x, int y);
-
+void victoryScreen();
 int main(int argc, char** argv)
 {
     glutInit(&argc, argv);
@@ -94,6 +94,12 @@ void display()
         ballSpeedX = ballSpeedXAux;
         ballSpeedY = ballSpeedYAux;
         glEnable(GL_DEPTH_TEST);
+
+    }
+    if (victory) {
+        glDisable(GL_DEPTH_TEST);
+        victoryScreen();
+        glEnable(GL_DEPTH_TEST);
     }
 
     ballSpeedXAux = ballSpeedX;
@@ -130,19 +136,31 @@ void ball()
 {
     glPushMatrix();
     glTranslatef(ballX, ballY, 0.0f);
-    glColor3f(0.541176,  0.603922, 0.74902);
+    glColor3f(1.0  ,0.01, 0.74902);
     glutSolidSphere(ballRadius, 20, 20);
     glPopMatrix();
 }
 
 void updateBall()
 {
-    if (menu > 0) {
+    if (menu > 0 || victory) {
         return;
     }
     // Atualiza a posição da bola
     ballX += ballSpeedX;
     ballY += ballSpeedY;
+
+    int remainingRectangles = 0;
+    for (int i = 0; i < MATRIX_ROWS; i++) {
+        for (int j = 0; j < MATRIX_COLS; j++) {
+            if (matrix[i][j].active) {
+                remainingRectangles++;
+            }
+        }
+    }
+    if (remainingRectangles == 0) {
+        victory = 1;
+    }
 
     // Verifica colisão com o retângulo da barra
     if (ballX + ballRadius >= width + 4.0f && ballX - ballRadius <= width + 6.0f &&
@@ -226,7 +244,7 @@ void drawMatrix()
             {
                 glPushMatrix();
                 glTranslatef(matrix[i][j].x, matrix[i][j].y, 0.0f);
-                glColor3f(0.541176, 0.603922, 0.74902);
+                glColor3f(0.0, 0.603922, 0.2);
                 glBegin(GL_QUADS);
                 glVertex2f(0.0f, 0.0f);
                 glVertex2f(RECT_WIDTH, 0.0f);
@@ -264,6 +282,29 @@ void gameOverScreen()
     }
     glPopMatrix();
 }
+
+void victoryScreen()
+{
+    glBegin(GL_QUADS);
+    glColor3f(0.5, 1.0, 1.0);
+    glVertex2f(2, 7);
+    glVertex2f(8, 7);
+    glVertex2f(8, 3);
+    glVertex2f(2, 3);
+    glEnd();
+
+    glPushMatrix();
+    glTranslatef(3.5f, 4.5f, 0.0f);
+    glColor3f(0.0, 0.0, 0.0);
+    glRasterPos2f(-1.0f, 0.0f);
+    const char* text = "Vitoria!";
+    for (int i = 0; i < strlen(text); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+    }
+    glPopMatrix();
+}
+
+
 
 void menuScreen()
 {
@@ -330,10 +371,10 @@ void keyboard(unsigned char key, int x, int y)
                     }
                 }
                 gameOver = 0;
-                ballSpeedX = 0.001f;
-                ballSpeedY = 0.001f;
-                ballSpeedXAux = 0.001f;
-                ballSpeedYAux = 0.001f;
+                ballSpeedX = 0.002f;
+                ballSpeedY = 0.002f;
+                ballSpeedXAux = 0.002f;
+                ballSpeedYAux = 0.002f;
                 ballX = 5.5f;
                 ballY = 0.75f;
             }
